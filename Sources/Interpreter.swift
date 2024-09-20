@@ -161,6 +161,12 @@ extension Interpreter: ExprVisitor {
     func visitVariableExpr(_ expr: Variable) throws -> ExprReturnType {
         try environment.get(name: expr.name) ?? .none
     }
+    
+    func visitAssignExpr(_ expr: Assign) throws -> ExprReturnType {
+        let value = try evaluate(expr.value)
+        try environment.assign(name: expr.name, value: value)
+        return value
+    }
 }
 
 extension Interpreter: StmtVisitor {
@@ -179,5 +185,4 @@ extension Interpreter: StmtVisitor {
         let value = stmt.initializer != nil ? try evaluate(stmt.initializer!) : nil;
         environment.define(name: stmt.name.lexeme, value: value ?? .none)
     }
-    
 }

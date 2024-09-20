@@ -19,4 +19,13 @@ class Environment {
         
         throw Slox.Error.runtimeError(token: name, message: "Undefined variable \(name.lexeme).")
     }
+    
+    public func assign(name: Token, value: LiteralValue) throws {
+        if values.contains(where: { $0.key == name.lexeme }) {
+            values[name.lexeme] = value
+            return
+        }
+        
+        throw Slox.Error.runtimeError(token: name, message: "Undefined variable '\(name.lexeme)'.")
+    }
 }

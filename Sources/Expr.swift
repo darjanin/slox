@@ -12,6 +12,7 @@ protocol ExprVisitor<ExprReturnType> {
     func visitGroupingExpr(_ expr: Grouping) throws -> ExprReturnType
     func visitLiteralExpr(_ expr: Literal) throws -> ExprReturnType
     func visitVariableExpr(_ expr: Variable) throws -> ExprReturnType
+    func visitAssignExpr(_ expr: Assign) throws -> ExprReturnType
 }
 
 
@@ -59,5 +60,14 @@ struct Variable: Expr {
     
     func accept<ExprReturnType>(_ visitor: any ExprVisitor<ExprReturnType>) throws -> ExprReturnType {
         try visitor.visitVariableExpr(self)
+    }
+}
+
+struct Assign: Expr {
+    let name: Token
+    let value: Expr
+    
+    func accept<ExprReturnType>(_ visitor: any ExprVisitor<ExprReturnType>) throws -> ExprReturnType {
+        try visitor.visitAssignExpr(self)
     }
 }

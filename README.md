@@ -29,7 +29,8 @@ statement      → exprStmt | printStmt ;
 exprStmt       → expression ";" ;
 printStmt      → "print" expression ";" ;
 
-expression     → comma ;
+expression     → assignment ;
+assignment     → IDENTIFIER "=" assignment | comma ; 
 comma          → equality ( "," equality )* ;
 equality       → comparison ( ( "!=" | "==" ) comparision )* ;
 comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;

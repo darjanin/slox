@@ -72,7 +72,24 @@ class Parser {
     }
     
     private func expression() throws -> Expr {
-        return try comma()
+        return try assignment()
+    }
+    
+    private func assignment() throws -> Expr {
+        var expr = try comma()
+        
+        if match(.EQUAL) {
+            let equals = previous
+            let value = try assignment()
+            
+            if expr is Variable, let name = (expr as? Variable)?.name {
+                return Assign(name: name, value: value)
+            }
+            
+            throw Slox.Error.parseError(token: equals, message: "Invalid assignment target.")
+        }
+        
+        return expr
     }
     
     private func comma() throws -> Expr {
