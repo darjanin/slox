@@ -25,12 +25,18 @@ operator       → "==" | "!=" | "<" | "<=" | ">" | ">="
 program        → declaration* EOF ;
 declaration    → varDecl | statement ;
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
-statement      → exprStmt | printStmt ;
+statement      → exprStmt | printStmt | block | ifStmt | whileStmt | forStmt ;
+block          → "{" declaration* "}" ;  
 exprStmt       → expression ";" ;
 printStmt      → "print" expression ";" ;
+ifStmt         → "if" "(" expression ")" statement ( "else" statement )? ; 
+whileStmt      → "while" "(" expression ")" statement ;
+forStmt        → "for" "(" ( varDecl | exprStmt | ";" ) expression? ";" expression? ")" statement ; 
 
 expression     → assignment ;
-assignment     → IDENTIFIER "=" assignment | comma ; 
+assignment     → IDENTIFIER "=" assignment | comma | logic_or ;
+logic_or       → logic_and ( "or" login_and )* ;
+logic_and      → comma ( "and" comma )* ;  
 comma          → equality ( "," equality )* ;
 equality       → comparison ( ( "!=" | "==" ) comparision )* ;
 comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;

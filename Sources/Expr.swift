@@ -13,6 +13,7 @@ protocol ExprVisitor<ExprReturnType> {
     func visitLiteralExpr(_ expr: Literal) throws -> ExprReturnType
     func visitVariableExpr(_ expr: Variable) throws -> ExprReturnType
     func visitAssignExpr(_ expr: Assign) throws -> ExprReturnType
+    func visitLogicalExpr(_ expr: Logical) throws -> ExprReturnType
 }
 
 
@@ -69,5 +70,15 @@ struct Assign: Expr {
     
     func accept<ExprReturnType>(_ visitor: any ExprVisitor<ExprReturnType>) throws -> ExprReturnType {
         try visitor.visitAssignExpr(self)
+    }
+}
+
+struct Logical: Expr {
+    let left: Expr
+    let `operator`: Token
+    let right: Expr
+    
+    func accept<ExprReturnType>(_ visitor: any ExprVisitor<ExprReturnType>) throws -> ExprReturnType {
+        try visitor.visitLogicalExpr(self)
     }
 }

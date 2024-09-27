@@ -8,9 +8,12 @@
 protocol StmtVisitor<StmtReturnType> {
     associatedtype StmtReturnType
     
-    func visitExpressionStmt(_ expr: Expression) throws -> StmtReturnType
-    func visitPrintStmt(_ expr: Print) throws -> StmtReturnType
-    func visitVarStmt(_ expr: Var) throws -> StmtReturnType
+    func visitExpressionStmt(_ stmt: Expression) throws -> StmtReturnType
+    func visitPrintStmt(_ stmt: Print) throws -> StmtReturnType
+    func visitVarStmt(_ stmt: Var) throws -> StmtReturnType
+    func visitBlockStmt(_ stmt: Block) throws -> StmtReturnType
+    func visitIfStmt(_ stmt: If) throws -> StmtReturnType
+    func visitWhileStmt(_ stmt: While) throws -> StmtReturnType
 }
 
 protocol Stmt {
@@ -39,5 +42,32 @@ struct Var: Stmt {
     
     func accept<StmtReturnType>(_ visitor: any StmtVisitor<StmtReturnType>) throws -> StmtReturnType {
         try visitor.visitVarStmt(self)
+    }
+}
+
+struct Block: Stmt {
+    let statements: [Stmt]
+    
+    func accept<StmtReturnType>(_ visitor: any StmtVisitor<StmtReturnType>) throws -> StmtReturnType {
+        try visitor.visitBlockStmt(self)
+    }
+}
+
+struct If: Stmt {
+    let condition: Expr
+    let thenBranch: Stmt
+    let elseBranch: Stmt?
+    
+    func accept<StmtReturnType>(_ visitor: any StmtVisitor<StmtReturnType>) throws -> StmtReturnType {
+        try visitor.visitIfStmt(self)
+    }
+}
+
+struct While: Stmt {
+    let condition: Expr
+    let body: Stmt
+    
+    func accept<StmtReturnType>(_ visitor: any StmtVisitor<StmtReturnType>) throws -> StmtReturnType {
+        try visitor.visitWhileStmt(self)
     }
 }

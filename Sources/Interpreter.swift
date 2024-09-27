@@ -6,7 +6,7 @@
 //
 
 class Interpreter {
-    private let environment = Environment()
+    private var environment = Environment()
     
     public func interpret(_ statements: [Stmt]) {
         do {
@@ -22,6 +22,18 @@ class Interpreter {
     
     private func execute(_ stmt: Stmt) throws {
         try stmt.accept(self)
+    }
+    
+    private func executeBlock(statements: [Stmt], environment: Environment) throws {
+        let previousEnvironment = self.environment
+        defer {
+            self.environment = previousEnvironment
+        }
+            
+        self.environment = environment
+        for statement in statements {
+            try execute(statement)
+        }
     }
     
     @discardableResult
@@ -45,6 +57,7 @@ class Interpreter {
     }
 }
 
+// MARK: - ExprVisitor
 extension Interpreter: ExprVisitor {
     typealias ExprReturnType = LiteralValue
     
@@ -167,8 +180,20 @@ extension Interpreter: ExprVisitor {
         try environment.assign(name: expr.name, value: value)
         return value
     }
+    
+    func visitLogicalExpr(_ expr: Logical) throws -> ExprReturnType {
+        let left = try evaluate(expr.left)
+        
+        if (expr.operator.type == .OR && isTruthy(left)) ||
+           (expr.operator.type == .AND && !isTruthy(left)) {
+            return left
+        }
+                
+        return try evaluate(expr.right)
+    }
 }
 
+// MARK: - StmtVisitor
 extension Interpreter: StmtVisitor {
     typealias StmtReturnType = Void
     
@@ -182,7 +207,32 @@ extension Interpreter: StmtVisitor {
     }
     
     func visitVarStmt(_ stmt: Var) throws {
+        environment.define(name: stmt.name.lexeme, value: .none)
         let value = stmt.initializer != nil ? try evaluate(stmt.initializer!) : nil;
         environment.define(name: stmt.name.lexeme, value: value ?? .none)
+    }
+    
+    func visitBlockStmt(_ stmt: Block) throws {
+        try executeBlock(
+            statements: stmt.statements,
+            environment: Environment(enclosing: environment)
+        )
+    }
+    
+    func visitIfStmt(_ stmt: If) throws {
+        if isTruthy(try evaluate(stmt.condition)) {
+            try execute(stmt.thenBranch)
+            return
+        }
+        
+        if let elseBranch = stmt.elseBranch {
+            try execute(elseBranch)
+        }
+    }
+    
+    func visitWhileStmt(_ stmt: While) throws -> Void {
+        while isTruthy(try evaluate(stmt.condition)) {
+            try execute(stmt.body)
+        }
     }
 }

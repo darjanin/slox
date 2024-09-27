@@ -39,6 +39,7 @@ class Parser {
             
             return try statement()
         } catch let error as Slox.Error {
+            Slox.handleError(error)
             if case .parseError = error {
                 synchronize()
             }
@@ -55,9 +56,57 @@ class Parser {
     }
     
     private func statement() throws -> Stmt {
+        if match(.FOR) { return try forStatement() }
+        if match(.IF) { return try ifStatement() }
+        if match(.WHILE) { return try whileStatement() }
         if match(.PRINT) { return try printStatement() }
+        if match(.LEFT_BRACE) { return Block(statements: try block()) }
 
         return try expressionStatement()
+    }
+    
+    private func forStatement() throws -> Stmt {
+        try consume(.LEFT_PAREN, message: "Expect '(' after for.")
+        
+        var initializer: Stmt?
+        if match(.SEMICOLON) {
+            initializer = nil
+        } else if match(.VAR) {
+            initializer = try varDeclaration()
+        } else {
+            initializer = try expressionStatement()
+        }
+        
+        let condition = match(.SEMICOLON) ? nil : try expression()
+        try consume(.SEMICOLON, message: "Expect ';' after loop condition.")
+        let increment = match(.RIGHT_PAREN) ? nil : try expression()
+        try consume(.RIGHT_PAREN, message: "Expect ')' after for clauses.")
+        
+        var body = try statement()
+        if let increment = increment { body = Block(statements: [body, Expression(expression: increment)]) }
+        body = While(condition: condition ?? Literal(value: .bool(true)), body: body) 
+        if let initializer = initializer { body = Block(statements: [initializer, body]) }
+        return body
+    }
+    
+    private func ifStatement() throws -> Stmt {
+        try consume(.LEFT_PAREN, message: "Expect '(' after if.")
+        let condition = try expression()
+        try consume(.RIGHT_PAREN, message: "Expect ')' after if condition.")
+        
+        let thenStatement = try statement()
+        let elseStatement = match(.ELSE) ? try statement() : nil
+        
+        return If(condition: condition, thenBranch: thenStatement, elseBranch: elseStatement)
+    }
+    
+    private func whileStatement() throws -> Stmt {
+        try consume(.LEFT_PAREN, message: "Expect '(' after while.")
+        let condition = try expression()
+        try consume(.RIGHT_PAREN, message: "Expect ')' after while condition.")
+        
+        let body = try statement()
+        return While(condition: condition, body: body)
     }
     
     private func printStatement() throws -> Stmt {
@@ -66,8 +115,22 @@ class Parser {
         return Print(expression: value)
     }
     
+    private func block() throws -> [Stmt] {
+        var statements: [Stmt] = []
+        
+        while !check(.RIGHT_BRACE) && !isAtEnd {
+            if let statement = try declaration() {
+                statements.append(statement)
+            }
+        }
+        
+        try consume(.RIGHT_BRACE, message: "Expect '}' after block.")
+        return statements
+    }
+    
     private func expressionStatement() throws -> Stmt {
         let value = try expression()
+        try consume(.SEMICOLON, message: "Expect ';' after expression statement.")
         return Expression(expression: value)
     }
     
@@ -76,7 +139,7 @@ class Parser {
     }
     
     private func assignment() throws -> Expr {
-        var expr = try comma()
+        let expr = try or()
         
         if match(.EQUAL) {
             let equals = previous
@@ -87,6 +150,30 @@ class Parser {
             }
             
             throw Slox.Error.parseError(token: equals, message: "Invalid assignment target.")
+        }
+        
+        return expr
+    }
+    
+    private func or() throws -> Expr {
+        var expr = try and()
+        
+        while match(.OR) {
+            let `operator` = previous
+            let right = try and()
+            expr = Logical(left: expr, operator: `operator`, right: right)
+        }
+        
+        return expr
+    }
+    
+    private func and() throws -> Expr {
+        var expr = try comma()
+        
+        while match(.AND) {
+            let `operator` = previous
+            let right = try comma()
+            expr = Logical(left: expr, operator: `operator`, right: right)
         }
         
         return expr
