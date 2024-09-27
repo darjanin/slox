@@ -10,6 +10,7 @@ enum LiteralValue: Equatable, Comparable {
     case string(String)
     case bool(Bool)
     case none
+    case function(SloxCallable)
     
     static func == (lhs: Self, rhs: Self) -> Bool {
         switch (lhs, rhs) {
@@ -68,6 +69,7 @@ extension LiteralValue: CustomStringConvertible {
         case let .string(string): return string
         case let .bool(bool): return String(bool)
         case .none: return "nil"
+        case .function: return "function"
         }
     }
 }

@@ -23,9 +23,13 @@ operator       → "==" | "!=" | "<" | "<=" | ">" | ">="
 
 ```
 program        → declaration* EOF ;
-declaration    → varDecl | statement ;
+declaration    → funDecl | varDecl | statement ;
+funDecl        → "fun" function ;
+function       → IDENTIFIER "(" parameters? ")" block ; 
+parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
 varDecl        → "var" IDENTIFIER ( "=" expression )? ";" ;
-statement      → exprStmt | printStmt | block | ifStmt | whileStmt | forStmt ;
+statement      → exprStmt | printStmt | block | ifStmt | whileStmt | forStmt | returnStmt ;
+returnStmt     → "return" expression? ";" ; 
 block          → "{" declaration* "}" ;  
 exprStmt       → expression ";" ;
 printStmt      → "print" expression ";" ;
@@ -42,7 +46,9 @@ equality       → comparison ( ( "!=" | "==" ) comparision )* ;
 comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term           → factor ( ( "-" | "+" ) factor )* ;
 factor         → unary ( ( "/" | "*" ) unary )*;
-unary          → ( "!" | "-" ) unary | primary;
+unary          → ( "!" | "-" ) unary | call;
+call           → primary ( "(" arguments? ")" )* ; 
+arguments      → expression ( "," expression )* ;
 primary        → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER ;
 ```
 

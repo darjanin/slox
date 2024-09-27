@@ -14,6 +14,8 @@ protocol StmtVisitor<StmtReturnType> {
     func visitBlockStmt(_ stmt: Block) throws -> StmtReturnType
     func visitIfStmt(_ stmt: If) throws -> StmtReturnType
     func visitWhileStmt(_ stmt: While) throws -> StmtReturnType
+    func visitFunctionStmt(_ stmt: Function) throws -> StmtReturnType
+    func visitReturnStmt(_ stmt: Return) throws -> StmtReturnType
 }
 
 protocol Stmt {
@@ -36,6 +38,15 @@ struct Print: Stmt {
     }
 }
 
+struct Return: Stmt {
+    let keyword: Token
+    let value: Expr?
+    
+    func accept<StmtReturnType>(_ visitor: any StmtVisitor<StmtReturnType>) throws -> StmtReturnType {
+        try visitor.visitReturnStmt(self)
+    }
+}
+
 struct Var: Stmt {
     let name: Token
     let initializer: Expr?
@@ -50,6 +61,16 @@ struct Block: Stmt {
     
     func accept<StmtReturnType>(_ visitor: any StmtVisitor<StmtReturnType>) throws -> StmtReturnType {
         try visitor.visitBlockStmt(self)
+    }
+}
+
+struct Function: Stmt {
+    let name: Token
+    let params: [Token]
+    let body: [Stmt]
+    
+    func accept<StmtReturnType>(_ visitor: any StmtVisitor<StmtReturnType>) throws -> StmtReturnType {
+        try visitor.visitFunctionStmt(self)
     }
 }
 

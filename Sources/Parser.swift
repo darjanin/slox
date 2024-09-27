@@ -35,6 +35,7 @@ class Parser {
     
     private func declaration() throws -> Stmt? {
         do {
+            if match(.FUN) { return try function("function") }
             if match(.VAR) { return try varDeclaration() }
             
             return try statement()
@@ -46,6 +47,27 @@ class Parser {
 
             return nil;
         }
+    }
+    
+    private func function(_ kind: String) throws -> Function {
+        let name = try consume(.IDENTIFIER, message: "Expect \(kind) name.")
+        try consume(.LEFT_PAREN, message: "Expect '(' after \(kind) name.")
+        var parameters: [Token] = []
+        if !check(.RIGHT_PAREN) {
+            repeat {
+                if parameters.count >= 255 {
+                    Slox.error(line: peek.line, message: "Can't have more than 255 parameters.")
+                }
+                
+                parameters.append(try consume(.IDENTIFIER, message: "Expect parameter name."))
+            } while match(.COMMA)
+        }
+        
+        try consume(.RIGHT_PAREN, message: "Expect ')' after parameters.")
+        
+        try consume(.LEFT_BRACE, message: "Expect '{' before \(kind) body.")
+        let body = try block()
+        return Function(name: name, params: parameters, body: body)
     }
     
     private func varDeclaration() throws -> Stmt {
@@ -60,9 +82,18 @@ class Parser {
         if match(.IF) { return try ifStatement() }
         if match(.WHILE) { return try whileStatement() }
         if match(.PRINT) { return try printStatement() }
+        if match(.RETURN) { return try returnStatement() }
         if match(.LEFT_BRACE) { return Block(statements: try block()) }
 
         return try expressionStatement()
+    }
+    
+    private func returnStatement() throws -> Stmt {
+        let keyword = previous
+        let value = check(.SEMICOLON) ? nil : try expression()
+        
+        try consume(.SEMICOLON, message: "Expect ';' after return value.")
+        return Return(keyword: keyword, value: value)
     }
     
     private func forStatement() throws -> Stmt {
@@ -246,7 +277,21 @@ class Parser {
             return Unary(operator: `operator`, right: right)
         }
         
-        return try primary()
+        return try call()
+    }
+    
+    private func call() throws -> Expr {
+        var expr = try primary()
+        
+        while (true) {
+            if match(.LEFT_PAREN) {
+                expr = try finishCall(expr)
+            } else {
+                break
+            }
+        }
+        
+        return expr
     }
     
     private func primary() throws -> Expr {
@@ -292,6 +337,21 @@ class Parser {
     private func consume(_ type: TokenType, message: String) throws -> Token {
         guard check(type) else { throw Slox.Error.parseError(token: peek, message: message) }
         return advance()
+    }
+    
+    private func finishCall(_ callee: Expr) throws -> Expr {
+        var arguments: [Expr] = []
+        if !check(.RIGHT_PAREN) {
+            repeat {
+                if arguments.count >= 255 {
+                    Slox.error(line: peek.line, message: "Can't have more than 255 arguments.")
+                }
+                arguments.append(try expression())
+            } while match(.COMMA)
+        }
+        
+        let paren = try consume(.RIGHT_PAREN, message: "Expect ')' after arguments")
+        return Call(callee: callee, paren: paren, arguments: arguments)
     }
     
     // MARK: - Synchronize

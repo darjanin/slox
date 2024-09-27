@@ -5,8 +5,26 @@
 //  Created by Milan Darjanin on 20/09/2024.
 //
 
+import Foundation
+
+struct Clock: SloxCallable {
+    var arity: Int { 0 }
+    
+    func call(_ interpreter: Interpreter, arguments: [LiteralValue]) -> LiteralValue {
+        return .number(Double(DispatchTime.now().uptimeNanoseconds / 1_000_000))
+    }
+    
+    var description: String { "<native fn>" }
+}
+
 class Interpreter {
-    private var environment = Environment()
+    final let globals = Environment()
+    private var environment: Environment
+    
+    init() {
+        self.environment = globals
+        globals.define(name: "clock", value: .function(Clock()))
+    }
     
     public func interpret(_ statements: [Stmt]) {
         do {
@@ -24,7 +42,7 @@ class Interpreter {
         try stmt.accept(self)
     }
     
-    private func executeBlock(statements: [Stmt], environment: Environment) throws {
+    func executeBlock(statements: [Stmt], environment: Environment) throws {
         let previousEnvironment = self.environment
         defer {
             self.environment = previousEnvironment
@@ -163,6 +181,24 @@ extension Interpreter: ExprVisitor {
         }
     }
     
+    func visitCallExpr(_ expr: Call) throws -> ExprReturnType {
+        let callee = try evaluate(expr.callee)
+        
+        var arguments: [ExprReturnType] = []
+        for argument in expr.arguments {
+            arguments.append(try evaluate(argument))
+        }
+        
+        guard case let .function(function) = callee else {
+            throw Slox.Error.runtimeError(token: expr.paren, message: "Can only call functions and classes.")
+        }
+        
+        if arguments.count != function.arity {
+            throw Slox.Error.runtimeError(token: expr.paren, message: "Expected \(function.arity) arguments but got \(arguments.count).")
+        }
+        return try function.call(self, arguments: arguments)
+    }
+    
     func visitGroupingExpr(_ expr: Grouping) throws -> ExprReturnType {
         try evaluate(expr.expression)
     }
@@ -206,20 +242,25 @@ extension Interpreter: StmtVisitor {
         print(value)
     }
     
-    func visitVarStmt(_ stmt: Var) throws {
+    func visitVarStmt(_ stmt: Var) throws -> StmtReturnType {
         environment.define(name: stmt.name.lexeme, value: .none)
         let value = stmt.initializer != nil ? try evaluate(stmt.initializer!) : nil;
         environment.define(name: stmt.name.lexeme, value: value ?? .none)
     }
     
-    func visitBlockStmt(_ stmt: Block) throws {
+    func visitBlockStmt(_ stmt: Block) throws -> StmtReturnType {
         try executeBlock(
             statements: stmt.statements,
             environment: Environment(enclosing: environment)
         )
     }
     
-    func visitIfStmt(_ stmt: If) throws {
+    func visitFunctionStmt(_ stmt: Function) throws -> StmtReturnType {
+        let function = SloxFunction(declaration: stmt, closure: environment)
+        environment.define(name: stmt.name.lexeme, value: .function(function))
+    }
+    
+    func visitIfStmt(_ stmt: If) throws -> StmtReturnType {
         if isTruthy(try evaluate(stmt.condition)) {
             try execute(stmt.thenBranch)
             return
@@ -230,9 +271,14 @@ extension Interpreter: StmtVisitor {
         }
     }
     
-    func visitWhileStmt(_ stmt: While) throws -> Void {
+    func visitWhileStmt(_ stmt: While) throws -> StmtReturnType {
         while isTruthy(try evaluate(stmt.condition)) {
             try execute(stmt.body)
         }
+    }
+    
+    func visitReturnStmt(_ stmt: Return) throws -> StmtReturnType {
+        let value: LiteralValue = stmt.value == nil ? .none : try evaluate(stmt.value!)
+        throw Slox.Runtime.return(value: value)
     }
 }

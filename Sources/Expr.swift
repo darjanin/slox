@@ -14,6 +14,7 @@ protocol ExprVisitor<ExprReturnType> {
     func visitVariableExpr(_ expr: Variable) throws -> ExprReturnType
     func visitAssignExpr(_ expr: Assign) throws -> ExprReturnType
     func visitLogicalExpr(_ expr: Logical) throws -> ExprReturnType
+    func visitCallExpr(_ expr: Call) throws -> ExprReturnType
 }
 
 
@@ -37,6 +38,16 @@ struct Unary: Expr {
     
     func accept<ExprReturnType>(_ visitor: any ExprVisitor<ExprReturnType>) throws -> ExprReturnType {
         try visitor.visitUnaryExpr(self)
+    }
+}
+
+struct Call: Expr {
+    let callee: Expr
+    let paren: Token
+    let arguments: [Expr]
+    
+    func accept<ExprReturnType>(_ visitor: any ExprVisitor<ExprReturnType>) throws -> ExprReturnType {
+        try visitor.visitCallExpr(self)
     }
 }
 

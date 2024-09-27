@@ -11,6 +11,10 @@ extension Slox {
         case parseError(token: Token, message: String)
     }
     
+    enum Runtime: Swift.Error {
+        case `return`(value: LiteralValue)
+    }
+    
     /// Handlle Slox specific errors
     /// - Parameter error: Enum containing Slox errros.
     static func handleError(_ error: Slox.Error) {
